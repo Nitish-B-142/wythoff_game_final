@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wythoff's Game</title>
-  <script type="module" crossorigin src="/wythoff_game_final/assets/index-DAsFMf5A.js"></script>
-  <link rel="stylesheet" crossorigin href="/wythoff_game_final/assets/index-DyKXdzKn.css">
+  <script type="module" crossorigin src="/wythoff_game_final/assets/index-D6YqzNdj.js"></script>
+  <link rel="stylesheet" crossorigin href="/wythoff_game_final/assets/index-CqXv9t3s.css">
 </head>
 <body>
     <div id="app">
@@ -40,8 +40,12 @@
         </div>
 
         <main id="game-container" class="hidden">
-            <div id="game-status-bar">
-                <p id="game-status">Your turn</p>
+            <div id="game-header">
+                <button id="back-to-menu-btn" class="text-btn">← Main Menu</button>
+                <div id="game-status-bar">
+                    <p id="game-status">Your turn</p>
+                    <small id="mode-indicator"></small>
+                </div>
             </div>
 
             <div id="game-board">
