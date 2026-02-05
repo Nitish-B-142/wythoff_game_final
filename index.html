@@ -4,17 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wythoff's Game</title>
-  <script type="module" crossorigin src="/wythoff_game_final/assets/index-D4c4cUeT.js"></script>
-  <link rel="stylesheet" crossorigin href="/wythoff_game_final/assets/index-DCocGxNK.css">
+  <script type="module" crossorigin src="/wythoff_game_final/assets/index-DAsFMf5A.js"></script>
+  <link rel="stylesheet" crossorigin href="/wythoff_game_final/assets/index-DyKXdzKn.css">
 </head>
 <body>
     <div id="app">
         <header>
             <h1>Wythoff's Game</h1>
-            <p id="game-status" aria-live="polite">Welcome! Choose your move.</p>
+            <div id="status-toast" class="toast hidden" aria-live="assertive"></div>
         </header>
 
-        <main>
+        <!-- Start Menu Overlay -->
+        <div id="menu-overlay" class="overlay">
+            <div class="menu-content">
+                <h2>Select Game Mode</h2>
+                <div class="menu-buttons">
+                    <button id="vs-computer-btn" class="primary-btn">Vs Computer</button>
+                    <button id="multiplayer-menu-btn" class="secondary-btn">Multiplayer</button>
+                </div>
+                
+                <section class="instructions">
+                    <h3>How to Play</h3>
+                    <ul>
+                        <li>The game starts with two piles of tokens.</li>
+                        <li>On your turn, you can:
+                            <ul>
+                                <li>Take <strong>any number</strong> of tokens from <strong>one pile</strong>.</li>
+                                <li>Take the <strong>same number</strong> of tokens from <strong>both piles</strong>.</li>
+                            </ul>
+                        </li>
+                        <li>The player who takes the <strong>last token</strong> wins!</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+
+        <main id="game-container" class="hidden">
+            <div id="game-status-bar">
+                <p id="game-status">Your turn</p>
+            </div>
+
             <div id="game-board">
                 <div class="pile" id="pile-a-container" aria-labelledby="pile-a-label">
                     <h2 id="pile-a-label">Pile A</h2>
@@ -51,20 +80,24 @@
                     <span id="amount-display">1</span>
                 </div>
 
-                <button id="confirm-move">Confirm Move</button>
-                <button id="ai-move-btn">AI Move</button>
-                <button id="reset-game">Reset Game</button>
+                <div class="button-group">
+                    <button id="confirm-move" class="primary-btn">Confirm Move</button>
+                    <button id="ai-move-btn" class="hidden">AI Hint</button>
+                    <button id="reset-game">Reset Game</button>
+                </div>
             </section>
 
-            <section id="multiplayer" aria-label="Multiplayer Controls">
-                <h3>Multiplayer</h3>
+            <section id="multiplayer" class="mp-section">
+                <h3>Multiplayer Setup</h3>
                 <div class="mp-group">
                     <p>Your ID: <span id="my-id">...</span></p>
-                    <input type="text" id="remote-id" placeholder="Enter Friend's ID">
-                    <button id="connect-btn">Connect</button>
+                    <div class="input-row">
+                        <input type="text" id="remote-id" placeholder="Enter Friend's ID">
+                        <button id="connect-btn">Connect</button>
+                    </div>
                 </div>
                 <div class="mp-group">
-                    <button id="share-link-btn">Copy Challenge Link</button>
+                    <button id="share-link-btn" class="secondary-btn">Copy Challenge Link</button>
                 </div>
             </section>
         </main>
