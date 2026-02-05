@@ -26,6 +26,7 @@ const pileBTokens = document.getElementById('pile-b-tokens');
 const pileACount = document.getElementById('pile-a-count');
 const pileBCount = document.getElementById('pile-b-count');
 const gameStatus = document.getElementById('game-status');
+const modeIndicator = document.getElementById('mode-indicator');
 const amountInput = document.getElementById('token-amount');
 const amountDisplay = document.getElementById('amount-display');
 const moveTypeSelect = document.getElementById('move-type');
@@ -38,21 +39,26 @@ const myIdDisplay = document.getElementById('my-id');
 const remoteIdInput = document.getElementById('remote-id');
 const connectBtn = document.getElementById('connect-btn');
 const shareLinkBtn = document.getElementById('share-link-btn');
+const backToMenuBtn = document.getElementById('back-to-menu-btn');
+const mpSection = document.getElementById('multiplayer');
 
 // Initialization
 async function run() {
     await init();
     setupEventListeners();
-    handleInitialUrlState();
-    updateUI();
+    handleInitialState(); // Logic: URL State > Menu
 }
 
 function setupEventListeners() {
-    // Menu Events
-    document.getElementById('vs-computer-btn').addEventListener('click', () => startVsComputer());
-    document.getElementById('multiplayer-menu-btn').addEventListener('click', () => startMultiplayer());
+    document.getElementById('vs-computer-btn').addEventListener('click', () => {
+        randomizePiles();
+        startGame(MODES.VS_COMPUTER);
+    });
+    document.getElementById('multiplayer-menu-btn').addEventListener('click', () => {
+        randomizePiles();
+        startGame(MODES.MULTIPLAYER);
+    });
 
-    // Game Events
     amountInput.addEventListener('input', (e) => amountDisplay.textContent = e.target.value);
     moveTypeSelect.addEventListener('change', () => {
         targetPileGroup.classList.toggle('hidden', moveTypeSelect.value === 'both');
@@ -63,8 +69,8 @@ function setupEventListeners() {
     confirmBtn.addEventListener('click', handleMove);
     aiBtn.addEventListener('click', handleAiMove);
     resetBtn.addEventListener('click', resetGame);
+    backToMenuBtn.addEventListener('click', exitToMenu);
 
-    // Multiplayer Events
     connectBtn.addEventListener('click', () => {
         const id = remoteIdInput.value.trim();
         if (id) connectToPeer(id);
@@ -76,33 +82,61 @@ function setupEventListeners() {
     });
 }
 
-// Game Mode Transitions
-function startVsComputer() {
-    gameMode = MODES.VS_COMPUTER;
-    menuOverlay.classList.add('hidden');
-    gameContainer.classList.remove('hidden');
-    aiBtn.classList.remove('hidden');
-    randomizePiles();
-    showToast('Game Started vs Computer');
-    updateUI();
+function handleInitialState() {
+    const hash = window.location.hash;
+    if (hash.includes('state=')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const state = params.get('state');
+        const mode = params.get('mode') || MODES.VS_COMPUTER;
+
+        if (state) {
+            const parts = state.split('-');
+            pileA = parseInt(parts[0]) || 20;
+            pileB = parseInt(parts[1]) || 25;
+            myTurn = true; // URL loads default to player turn
+            startGame(mode, true); // true = don't randomize
+            return;
+        }
+    }
+    // Default: Show Menu
+    exitToMenu();
 }
 
-function startMultiplayer() {
-    gameMode = MODES.MULTIPLAYER;
+function startGame(mode, skipRandomize = false) {
+    gameMode = mode;
     menuOverlay.classList.add('hidden');
     gameContainer.classList.remove('hidden');
-    aiBtn.classList.add('hidden'); // Disable AI in multiplayer
-    setupPeer();
-    randomizePiles();
-    isHost = true;
+
+    if (mode === MODES.MULTIPLAYER) {
+        setupPeer();
+        isHost = !skipRandomize; // If we didn't randomize (loaded from link), we might be guest
+        mpSection.classList.remove('hidden');
+        aiBtn.classList.add('hidden');
+        modeIndicator.textContent = "Multiplayer Mode";
+    } else {
+        mpSection.classList.add('hidden');
+        aiBtn.classList.remove('hidden');
+        modeIndicator.textContent = "Vs Computer";
+    }
+
     updateUI();
+    updateUrl();
+}
+
+function exitToMenu() {
+    gameMode = MODES.MENU;
+    window.location.hash = ''; // Clear URL
+    menuOverlay.classList.remove('hidden');
+    gameContainer.classList.add('hidden');
+    if (conn) conn.close();
+    if (peer) peer.destroy();
+    peer = null;
+    conn = null;
 }
 
 function randomizePiles() {
-    // Generate piles between 12 and 30
     pileA = Math.floor(Math.random() * 18) + 12;
     pileB = Math.floor(Math.random() * 18) + 12;
-    // Avoid trivial starting positions (e.g., nearly equal)
     if (Math.abs(pileA - pileB) < 2) pileB += 5;
     myTurn = true;
 }
@@ -141,8 +175,7 @@ function handleMove() {
 }
 
 function handleAiMove() {
-    if (gameMode === MODES.MULTIPLAYER) return; // Safety check
-    
+    if (gameMode !== MODES.VS_COMPUTER) return;
     const result = ai_move(pileA, pileB);
     pileA = result[0];
     pileB = result[1];
@@ -177,7 +210,7 @@ function updateUI() {
 function renderTokens(container, count) {
     container.innerHTML = '';
     const fragment = document.createDocumentFragment();
-    for (let i = 0; i < Math.min(count, 100); i++) { // Cap at 100 for performance
+    for (let i = 0; i < Math.min(count, 100); i++) {
         const token = document.createElement('div');
         token.className = 'token';
         fragment.appendChild(token);
@@ -202,10 +235,10 @@ function updateMaxAmount() {
 
 // Multiplayer Logic
 function setupPeer() {
+    if (peer) return;
     peer = new Peer();
     peer.on('open', (id) => {
         myIdDisplay.textContent = id;
-        showToast('PeerID Generated. Waiting for connection...');
     });
     
     peer.on('connection', (c) => {
@@ -213,12 +246,11 @@ function setupPeer() {
         setupConnection();
         isHost = true;
         showToast('Opponent Connected!');
-        sendState('sync'); // Host sends initial random state
+        sendState('sync');
     });
 
     peer.on('error', (err) => {
         showToast(`Connection Error: ${err.type}`);
-        console.error(err);
     });
 }
 
@@ -231,22 +263,16 @@ function connectToPeer(id) {
 function setupConnection() {
     conn.on('open', () => {
         showToast('Connection Established!');
-        gameMode = MODES.MULTIPLAYER;
-        menuOverlay.classList.add('hidden');
-        gameContainer.classList.remove('hidden');
-        aiBtn.classList.add('hidden');
     });
     
     conn.on('data', (data) => {
         if (data.type === 'move' || data.type === 'sync') {
             pileA = data.pileA;
             pileB = data.pileB;
-            myTurn = data.type === 'move'; // If they moved, it's my turn. If sync, Host's turn.
+            myTurn = data.type === 'move';
             if (data.type === 'sync') myTurn = !isHost; 
-            
             updateUI();
             updateUrl();
-            if (data.type === 'move') showToast('Opponent moved!');
         }
     });
 
@@ -259,15 +285,10 @@ function setupConnection() {
 
 function sendState(type) {
     if (conn && conn.open) {
-        conn.send({
-            type: type,
-            pileA,
-            pileB
-        });
+        conn.send({ type, pileA, pileB });
     }
 }
 
-// Utilities
 function showToast(message) {
     toast.textContent = message;
     toast.classList.remove('hidden');
@@ -283,24 +304,9 @@ function resetGame() {
 }
 
 function updateUrl() {
+    if (gameMode === MODES.MENU) return;
     const state = `state=${pileA}-${pileB}&mode=${gameMode}`;
     window.history.replaceState(null, '', `#${state}`);
-}
-
-function handleInitialUrlState() {
-    const hash = window.location.hash;
-    if (hash.includes('state=')) {
-        const params = new URLSearchParams(hash.substring(1));
-        const state = params.get('state');
-        if (state) {
-            const parts = state.split('-');
-            pileA = parseInt(parts[0]) || 20;
-            pileB = parseInt(parts[1]) || 25;
-        }
-        const mode = params.get('mode');
-        if (mode === MODES.VS_COMPUTER) startVsComputer();
-        // Multiplayer links don't auto-start to allow PeerID setup
-    }
 }
 
 run();

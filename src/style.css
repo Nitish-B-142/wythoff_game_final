@@ -101,13 +101,49 @@ body {
   pointer-events: none;
 }
 
-/* Game Status Bar */
+/* Game Header */
+#game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 0 0.5rem;
+}
+
+.text-btn {
+  background: none !important;
+  border: none !important;
+  color: #646cff !important;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 !important;
+  min-height: auto !important;
+}
+
+.text-btn:hover {
+  text-decoration: underline;
+}
+
 #game-status-bar {
   background: #333;
-  padding: 0.8rem;
-  border-radius: 10px;
-  margin-bottom: 1.5rem;
-  font-weight: bold;
+  padding: 0.8rem 1.5rem;
+  border-radius: 12px;
+  flex-grow: 1;
+  margin-left: 1rem;
+  text-align: right;
+}
+
+#game-status {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+#mode-indicator {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .hidden {
