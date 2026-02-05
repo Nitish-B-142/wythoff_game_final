@@ -118,7 +118,11 @@ function updateMaxAmount() {
 }
 
 function handleMove() {
-    if (!myTurn) return;
+    console.log("handleMove triggered. Current state:", { pileA, pileB, myTurn });
+    if (!myTurn) {
+        console.warn("Move attempted but it's not the player's turn.");
+        return;
+    }
     
     const amount = parseInt(amountInput.value);
     const type = moveTypeSelect.value;
@@ -133,7 +137,9 @@ function handleMove() {
         nextB -= amount;
     }
     
+    console.log(`Validating move: (${pileA}, ${pileB}) -> (${nextA}, ${nextB})`);
     if (validate_move(pileA, pileB, nextA, nextB)) {
+        console.log("Move validated successfully.");
         pileA = nextA;
         pileB = nextB;
         myTurn = false;
@@ -141,13 +147,19 @@ function handleMove() {
         sendState();
         updateUrl();
     } else {
+        console.error("Invalid move according to Wasm logic.");
         alert("Invalid move!");
     }
 }
 
 function handleAiMove() {
-    if (!myTurn) return;
+    console.log("handleAiMove triggered. Current state:", { pileA, pileB, myTurn });
+    if (!myTurn) {
+        console.warn("AI move attempted but it's not the player's turn.");
+        return;
+    }
     const result = ai_move(pileA, pileB);
+    console.log("AI result from Wasm:", result);
     pileA = result[0];
     pileB = result[1];
     myTurn = false;
