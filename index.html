@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wythoff's Game</title>
+    <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Wythoff's Game</h1>
+            <p id="game-status" aria-live="polite">Welcome! Choose your move.</p>
+        </header>
+
+        <main>
+            <div id="game-board">
+                <div class="pile" id="pile-a-container" aria-labelledby="pile-a-label">
+                    <h2 id="pile-a-label">Pile A</h2>
+                    <div id="pile-a-tokens" class="tokens" aria-label="Tokens in Pile A"></div>
+                    <p class="count" id="pile-a-count">0 tokens</p>
+                </div>
+                <div class="pile" id="pile-b-container" aria-labelledby="pile-b-label">
+                    <h2 id="pile-b-label">Pile B</h2>
+                    <div id="pile-b-tokens" class="tokens" aria-label="Tokens in Pile B"></div>
+                    <p class="count" id="pile-b-count">0 tokens</p>
+                </div>
+            </div>
+
+            <section id="controls" aria-label="Game Controls">
+                <div class="control-group">
+                    <label for="move-type">Move Type:</label>
+                    <select id="move-type">
+                        <option value="one">One Pile</option>
+                        <option value="both">Both Piles</option>
+                    </select>
+                </div>
+
+                <div class="control-group" id="target-pile-group">
+                    <label for="target-pile">Target Pile:</label>
+                    <select id="target-pile">
+                        <option value="a">Pile A</option>
+                        <option value="b">Pile B</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="token-amount">Amount to Remove:</label>
+                    <input type="range" id="token-amount" min="1" value="1">
+                    <span id="amount-display">1</span>
+                </div>
+
+                <button id="confirm-move">Confirm Move</button>
+                <button id="ai-move-btn">AI Move</button>
+                <button id="reset-game">Reset Game</button>
+            </section>
+
+            <section id="multiplayer" aria-label="Multiplayer Controls">
+                <h3>Multiplayer</h3>
+                <div class="mp-group">
+                    <p>Your ID: <span id="my-id">...</span></p>
+                    <input type="text" id="remote-id" placeholder="Enter Friend's ID">
+                    <button id="connect-btn">Connect</button>
+                </div>
+                <div class="mp-group">
+                    <button id="share-link-btn">Copy Challenge Link</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Take tokens from one pile, or same amount from both. Last player to move wins.</p>
+        </footer>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
