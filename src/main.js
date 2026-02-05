@@ -146,6 +146,22 @@ function handleMove() {
         updateUI();
         sendState();
         updateUrl();
+
+        // Auto-AI move if not in multiplayer
+        if (!conn || !conn.open) {
+            console.log("Single-player mode: Triggering AI move in 1s...");
+            setTimeout(() => {
+                if (pileA > 0 || pileB > 0) {
+                    const result = ai_move(pileA, pileB);
+                    console.log("AI Auto-move result:", result);
+                    pileA = result[0];
+                    pileB = result[1];
+                    myTurn = true;
+                    updateUI();
+                    updateUrl();
+                }
+            }, 1000);
+        }
     } else {
         console.error("Invalid move according to Wasm logic.");
         alert("Invalid move!");
