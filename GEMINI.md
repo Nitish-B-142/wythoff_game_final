@@ -46,6 +46,16 @@ npm run build
 -   **Non-Blocking UI:** Use the custom toast system ( `showToast()` ) instead of `alert()` to avoid blocking the main thread or breaking PeerJS connections.
 -   **Performance:** Cap visual token rendering at 100 tokens to ensure smooth performance on low-end mobile devices.
 
+## Automated Verification
+This project employs **Agentic Verification** to ensure mathematical and system stability:
+-   **Method 1 (Logic Simulation):** Property-based tests in Rust verify that the AI always makes a valid, improving move.
+-   **Method 3 (Chaos Fuzzing):** The `test_invalid_moves` suite stress-tests boundary conditions (negative values, additive moves, diagonal inequality) to ensure the Wasm module never enters an undefined state.
+
+To run the verification suite:
+```bash
+cd wythoff-wasm && cargo test
+```
+
 ## Maintenance Notes
 -   If you modify Rust logic, you **must** rebuild the `pkg/` directory for changes to reflect in the frontend.
 -   Multiplayer testing requires two browser instances (can be two tabs on the same machine).
