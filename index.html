@@ -4,14 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wythoff's Game</title>
-  <script type="module" crossorigin src="/wythoff_game_final/assets/index-GUtJygXt.js"></script>
-  <link rel="stylesheet" crossorigin href="/wythoff_game_final/assets/index-CqXv9t3s.css">
+  <script type="module" crossorigin src="/wythoff_game_final/assets/index-ClqAy_wv.js"></script>
+  <link rel="stylesheet" crossorigin href="/wythoff_game_final/assets/index-e6xm6g8z.css">
 </head>
 <body>
     <div id="app">
         <header>
             <h1>Wythoff's Game</h1>
             <div id="status-toast" class="toast hidden" aria-live="assertive"></div>
+            <div id="reconnect-overlay" class="overlay hidden">
+                <div class="menu-content">
+                    <h2>Connection Lost</h2>
+                    <p>Attempting to reconnect to opponent...</p>
+                    <div class="spinner"></div>
+                    <button id="force-quit-btn" class="secondary-btn">Return to Menu</button>
+                </div>
+            </div>
         </header>
 
         <!-- Start Menu Overlay -->
