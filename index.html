@@ -11,6 +11,14 @@
         <header>
             <h1>Wythoff's Game</h1>
             <div id="status-toast" class="toast hidden" aria-live="assertive"></div>
+            <div id="reconnect-overlay" class="overlay hidden">
+                <div class="menu-content">
+                    <h2>Connection Lost</h2>
+                    <p>Attempting to reconnect to opponent...</p>
+                    <div class="spinner"></div>
+                    <button id="force-quit-btn" class="secondary-btn">Return to Menu</button>
+                </div>
+            </div>
         </header>
 
         <!-- Start Menu Overlay -->

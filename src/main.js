@@ -16,10 +16,12 @@ let gameMode = MODES.MENU;
 let isHost = false;
 let peer = null;
 let conn = null;
-let pendingMove = null; // For ACK protocol
+let pendingMove = null;
+let heartbeatInterval = null;
 
 // DOM Elements
 const menuOverlay = document.getElementById('menu-overlay');
+const reconnectOverlay = document.getElementById('reconnect-overlay');
 const gameContainer = document.getElementById('game-container');
 const toast = document.getElementById('status-toast');
 const pileATokens = document.getElementById('pile-a-tokens');
@@ -41,6 +43,7 @@ const remoteIdInput = document.getElementById('remote-id');
 const connectBtn = document.getElementById('connect-btn');
 const shareLinkBtn = document.getElementById('share-link-btn');
 const backToMenuBtn = document.getElementById('back-to-menu-btn');
+const forceQuitBtn = document.getElementById('force-quit-btn');
 const mpSection = document.getElementById('multiplayer');
 
 // Initialization
@@ -72,6 +75,7 @@ function setupEventListeners() {
     aiBtn.addEventListener('click', handleAiMove);
     resetBtn.addEventListener('click', resetGame);
     backToMenuBtn.addEventListener('click', exitToMenu);
+    forceQuitBtn.addEventListener('click', exitToMenu);
 
     connectBtn.addEventListener('click', () => {
         const id = remoteIdInput.value.trim();
@@ -127,8 +131,10 @@ function exitToMenu() {
     window.location.hash = '';
     menuOverlay.classList.remove('hidden');
     gameContainer.classList.add('hidden');
+    reconnectOverlay.classList.add('hidden');
     if (conn) conn.close();
     if (peer) peer.destroy();
+    clearInterval(heartbeatInterval);
     peer = null;
     conn = null;
     pendingMove = null;
@@ -150,33 +156,32 @@ function handleMove() {
     let nextB = pileB;
     
     if (type === 'one') {
-        if (targetPileSelect.value === 'a') nextA -= amount;
+        const target = targetPileSelect.value;
+        if (target === 'a') nextA -= amount;
         else nextB -= amount;
+        showFloatingText(amount, target === 'a' ? 'pile-a-container' : 'pile-b-container');
     } else {
         nextA -= amount;
         nextB -= amount;
+        showFloatingText(amount, 'pile-a-container');
+        showFloatingText(amount, 'pile-b-container');
     }
     
     if (validate_move(pileA, pileB, nextA, nextB)) {
-        const oldA = pileA;
-        const oldB = pileB;
         pileA = nextA;
         pileB = nextB;
         
         if (gameMode === MODES.MULTIPLAYER) {
-            // Multiplayer Handshake: Enter pending state
             pendingMove = { pileA, pileB };
             myTurn = false;
             updateUI();
             sendState('move', pileA, pileB);
-            showToast('Syncing with opponent...');
         } else {
-            // Single Player: Immediate update
             myTurn = false;
             updateUI();
             updateUrl();
             if (pileA > 0 || pileB > 0) {
-                setTimeout(handleAiMove, 600); // Faster AI for Strategists
+                setTimeout(handleAiMove, 600);
             }
         }
     } else {
@@ -187,12 +192,18 @@ function handleMove() {
 function handleAiMove() {
     if (gameMode !== MODES.VS_COMPUTER) return;
     const result = ai_move(pileA, pileB);
+    
+    const diffA = pileA - result[0];
+    const diffB = pileB - result[1];
+    
+    if (diffA > 0) showFloatingText(diffA, 'pile-a-container');
+    if (diffB > 0) showFloatingText(diffB, 'pile-b-container');
+
     pileA = result[0];
     pileB = result[1];
     myTurn = true;
     updateUI();
     updateUrl();
-    showToast('AI played');
 }
 
 function updateUI() {
@@ -219,18 +230,42 @@ function updateUI() {
     if (pileA === 0 && pileB === 0) {
         gameStatus.textContent = myTurn ? "Game Over! You lost." : "Victory! You won!";
         confirmBtn.disabled = true;
+        document.body.classList.add('shake');
+        setTimeout(() => document.body.classList.remove('shake'), 500);
     }
 }
 
 function renderTokens(container, count) {
-    container.innerHTML = '';
-    const fragment = document.createDocumentFragment();
-    for (let i = 0; i < Math.min(count, 100); i++) {
-        const token = document.createElement('div');
-        token.className = 'token';
-        fragment.appendChild(token);
+    const currentCount = container.children.length;
+    if (currentCount > count) {
+        // Juice: Animate removal
+        for (let i = 0; i < currentCount - count; i++) {
+            const last = container.lastElementChild;
+            if (last) {
+                last.classList.add('token-removing');
+                setTimeout(() => last.remove(), 300);
+            }
+        }
+    } else if (currentCount < count) {
+        // Add new tokens
+        for (let i = 0; i < count - currentCount; i++) {
+            const token = document.createElement('div');
+            token.className = 'token';
+            container.appendChild(token);
+        }
     }
-    container.appendChild(fragment);
+}
+
+function showFloatingText(amount, containerId) {
+    const container = document.getElementById(containerId);
+    const rect = container.getBoundingClientRect();
+    const text = document.createElement('div');
+    text.className = 'floating-text';
+    text.textContent = `-${amount}`;
+    text.style.left = `${rect.left + rect.width/2}px`;
+    text.style.top = `${rect.top}px`;
+    document.body.appendChild(text);
+    setTimeout(() => text.remove(), 800);
 }
 
 function updateMaxAmount() {
@@ -241,7 +276,6 @@ function updateMaxAmount() {
     } else {
         max = Math.min(pileA, pileB);
     }
-    // Dynamic Hardening: Physically limit the range input
     amountInput.max = Math.max(1, max);
     if (parseInt(amountInput.value) > max) {
         amountInput.value = max;
@@ -249,7 +283,7 @@ function updateMaxAmount() {
     }
 }
 
-// Multiplayer Logic
+// Pro Netcode: Heartbeat & Connection Management
 function setupPeer() {
     if (peer) return;
     peer = new Peer();
@@ -261,8 +295,11 @@ function setupPeer() {
         conn = c;
         setupConnection();
         isHost = true;
-        showToast('Opponent Connected!');
         sendState('sync', pileA, pileB);
+    });
+
+    peer.on('error', (err) => {
+        showToast(`Peer Error: ${err.type}`);
     });
 }
 
@@ -274,36 +311,58 @@ function connectToPeer(id) {
 
 function setupConnection() {
     conn.on('open', () => {
-        showToast('Connection Established!');
+        showToast('Connected!');
+        reconnectOverlay.classList.add('hidden');
+        startHeartbeat();
     });
     
     conn.on('data', (data) => {
         if (data.type === 'move') {
-            pileA = data.pileA;
-            pileB = data.pileB;
-            myTurn = true;
-            updateUI();
-            updateUrl();
-            sendState('ack'); // Respond with Acknowledgement
-            showToast('Opponent moved!');
+            // Deterministic Verification: Verify move against local brain
+            if (validate_move(pileA, pileB, data.pileA, data.pileB)) {
+                pileA = data.pileA;
+                pileB = data.pileB;
+                myTurn = true;
+                updateUI();
+                updateUrl();
+                sendState('ack');
+            } else {
+                console.error("Desync detected! Requesting resync.");
+                sendState('request_sync');
+            }
         } else if (data.type === 'ack') {
             pendingMove = null;
             updateUI();
             updateUrl();
-        } else if (data.type === 'sync') {
+        } else if (data.type === 'sync' || data.type === 'resync_resp') {
             pileA = data.pileA;
             pileB = data.pileB;
-            myTurn = !isHost; 
+            myTurn = data.type === 'resync_resp' ? myTurn : !isHost;
             updateUI();
             updateUrl();
+        } else if (data.type === 'request_sync') {
+            sendState('resync_resp');
+        } else if (data.type === 'heartbeat') {
+            // Just stay alive
         }
     });
 
-    conn.on('close', () => {
-        showToast('Opponent Disconnected');
-        myTurn = false;
-        updateUI();
-    });
+    conn.on('close', () => handleDisconnect());
+    conn.on('error', () => handleDisconnect());
+}
+
+function handleDisconnect() {
+    reconnectOverlay.classList.remove('hidden');
+    clearInterval(heartbeatInterval);
+}
+
+function startHeartbeat() {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = setInterval(() => {
+        if (conn && conn.open) {
+            sendState('heartbeat');
+        }
+    }, 3000);
 }
 
 function sendState(type, a = pileA, b = pileB) {
