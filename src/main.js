@@ -16,6 +16,7 @@ let gameMode = MODES.MENU;
 let isHost = false;
 let peer = null;
 let conn = null;
+let pendingMove = null; // For ACK protocol
 
 // DOM Elements
 const menuOverlay = document.getElementById('menu-overlay');
@@ -46,7 +47,8 @@ const mpSection = document.getElementById('multiplayer');
 async function run() {
     await init();
     setupEventListeners();
-    handleInitialState(); // Logic: URL State > Menu
+    handleInitialState();
+    updateUI();
 }
 
 function setupEventListeners() {
@@ -93,12 +95,10 @@ function handleInitialState() {
             const parts = state.split('-');
             pileA = parseInt(parts[0]) || 20;
             pileB = parseInt(parts[1]) || 25;
-            myTurn = true; // URL loads default to player turn
-            startGame(mode, true); // true = don't randomize
+            startGame(mode, true);
             return;
         }
     }
-    // Default: Show Menu
     exitToMenu();
 }
 
@@ -109,7 +109,7 @@ function startGame(mode, skipRandomize = false) {
 
     if (mode === MODES.MULTIPLAYER) {
         setupPeer();
-        isHost = !skipRandomize; // If we didn't randomize (loaded from link), we might be guest
+        isHost = !skipRandomize;
         mpSection.classList.remove('hidden');
         aiBtn.classList.add('hidden');
         modeIndicator.textContent = "Multiplayer Mode";
@@ -120,18 +120,18 @@ function startGame(mode, skipRandomize = false) {
     }
 
     updateUI();
-    updateUrl();
 }
 
 function exitToMenu() {
     gameMode = MODES.MENU;
-    window.location.hash = ''; // Clear URL
+    window.location.hash = '';
     menuOverlay.classList.remove('hidden');
     gameContainer.classList.add('hidden');
     if (conn) conn.close();
     if (peer) peer.destroy();
     peer = null;
     conn = null;
+    pendingMove = null;
 }
 
 function randomizePiles() {
@@ -142,7 +142,7 @@ function randomizePiles() {
 }
 
 function handleMove() {
-    if (!myTurn) return;
+    if (!myTurn || pendingMove) return;
     
     const amount = parseInt(amountInput.value);
     const type = moveTypeSelect.value;
@@ -158,16 +158,26 @@ function handleMove() {
     }
     
     if (validate_move(pileA, pileB, nextA, nextB)) {
+        const oldA = pileA;
+        const oldB = pileB;
         pileA = nextA;
         pileB = nextB;
-        myTurn = false;
-        updateUI();
-        updateUrl();
         
         if (gameMode === MODES.MULTIPLAYER) {
-            sendState('move');
-        } else if (gameMode === MODES.VS_COMPUTER && (pileA > 0 || pileB > 0)) {
-            setTimeout(handleAiMove, 800);
+            // Multiplayer Handshake: Enter pending state
+            pendingMove = { pileA, pileB };
+            myTurn = false;
+            updateUI();
+            sendState('move', pileA, pileB);
+            showToast('Syncing with opponent...');
+        } else {
+            // Single Player: Immediate update
+            myTurn = false;
+            updateUI();
+            updateUrl();
+            if (pileA > 0 || pileB > 0) {
+                setTimeout(handleAiMove, 600); // Faster AI for Strategists
+            }
         }
     } else {
         showToast('Invalid Move!');
@@ -182,7 +192,7 @@ function handleAiMove() {
     myTurn = true;
     updateUI();
     updateUrl();
-    showToast('AI made its move');
+    showToast('AI played');
 }
 
 function updateUI() {
@@ -194,16 +204,21 @@ function updateUI() {
     updateMaxAmount();
     
     const appContainer = document.getElementById('app');
-    if (myTurn) appContainer.classList.add('my-turn');
-    else appContainer.classList.remove('my-turn');
+    const controls = document.querySelectorAll('#controls input, #controls select, #confirm-move');
+    
+    if (myTurn && !pendingMove) {
+        appContainer.classList.add('my-turn');
+        controls.forEach(c => c.disabled = false);
+        gameStatus.textContent = "Your Turn";
+    } else {
+        appContainer.classList.remove('my-turn');
+        controls.forEach(c => c.disabled = true);
+        gameStatus.textContent = pendingMove ? "Syncing..." : "Opponent's Turn...";
+    }
 
     if (pileA === 0 && pileB === 0) {
         gameStatus.textContent = myTurn ? "Game Over! You lost." : "Victory! You won!";
         confirmBtn.disabled = true;
-        aiBtn.disabled = true;
-    } else {
-        gameStatus.textContent = myTurn ? "Your Turn" : "Opponent's Turn...";
-        confirmBtn.disabled = !myTurn;
     }
 }
 
@@ -226,6 +241,7 @@ function updateMaxAmount() {
     } else {
         max = Math.min(pileA, pileB);
     }
+    // Dynamic Hardening: Physically limit the range input
     amountInput.max = Math.max(1, max);
     if (parseInt(amountInput.value) > max) {
         amountInput.value = max;
@@ -246,11 +262,7 @@ function setupPeer() {
         setupConnection();
         isHost = true;
         showToast('Opponent Connected!');
-        sendState('sync');
-    });
-
-    peer.on('error', (err) => {
-        showToast(`Connection Error: ${err.type}`);
+        sendState('sync', pileA, pileB);
     });
 }
 
@@ -266,11 +278,22 @@ function setupConnection() {
     });
     
     conn.on('data', (data) => {
-        if (data.type === 'move' || data.type === 'sync') {
+        if (data.type === 'move') {
             pileA = data.pileA;
             pileB = data.pileB;
-            myTurn = data.type === 'move';
-            if (data.type === 'sync') myTurn = !isHost; 
+            myTurn = true;
+            updateUI();
+            updateUrl();
+            sendState('ack'); // Respond with Acknowledgement
+            showToast('Opponent moved!');
+        } else if (data.type === 'ack') {
+            pendingMove = null;
+            updateUI();
+            updateUrl();
+        } else if (data.type === 'sync') {
+            pileA = data.pileA;
+            pileB = data.pileB;
+            myTurn = !isHost; 
             updateUI();
             updateUrl();
         }
@@ -283,23 +306,23 @@ function setupConnection() {
     });
 }
 
-function sendState(type) {
+function sendState(type, a = pileA, b = pileB) {
     if (conn && conn.open) {
-        conn.send({ type, pileA, pileB });
+        conn.send({ type, pileA: a, pileB: b });
     }
 }
 
 function showToast(message) {
     toast.textContent = message;
     toast.classList.remove('hidden');
-    setTimeout(() => toast.classList.add('hidden'), 3000);
+    setTimeout(() => toast.classList.add('hidden'), 2500);
 }
 
 function resetGame() {
     randomizePiles();
     updateUI();
     updateUrl();
-    if (gameMode === MODES.MULTIPLAYER) sendState('sync');
+    if (gameMode === MODES.MULTIPLAYER) sendState('sync', pileA, pileB);
     showToast('Game Reset');
 }
 
