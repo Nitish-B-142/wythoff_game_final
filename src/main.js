@@ -1,11 +1,13 @@
 import init, { validate_move, ai_move } from '../pkg/wythoff_wasm.js';
 import { Peer } from 'peerjs';
+import LZString from 'lz-string';
 
 // Game Constants
 const MODES = {
     MENU: 'menu',
     VS_COMPUTER: 'vs_computer',
-    MULTIPLAYER: 'multiplayer'
+    MULTIPLAYER: 'multiplayer',
+    REPLAY: 'replay'
 };
 
 // State Management
@@ -19,6 +21,8 @@ let conn = null;
 let pendingMove = null;
 let heartbeatInterval = null;
 let idleTimer = null;
+let moveHistory = [];
+let replayStep = 0;
 
 // DOM Elements
 const menuOverlay = document.getElementById('menu-overlay');
@@ -98,6 +102,11 @@ function setupEventListeners() {
 
     shareLinkBtn.addEventListener('click', handleInviteFriend);
 
+    document.getElementById('prev-move-btn').addEventListener('click', prevReplayStep);
+    document.getElementById('next-move-btn').addEventListener('click', nextReplayStep);
+    document.getElementById('exit-replay-btn').addEventListener('click', exitToMenu);
+    document.getElementById('share-replay-btn').addEventListener('click', shareReplay);
+
     // Global interaction monitoring
     document.addEventListener('mousemove', resetIdleTimer);
     document.addEventListener('touchstart', resetIdleTimer);
@@ -106,7 +115,7 @@ function setupEventListeners() {
 // User Friendliness: Native Share & Deep Link
 async function handleInviteFriend() {
     const url = `${window.location.origin}${window.location.pathname}#state=${pileA}-${pileB}&mode=${gameMode}&join=${peer.id}`;
-    
+
     if (navigator.share) {
         try {
             await navigator.share({
@@ -132,12 +141,30 @@ function handleInitialState() {
     const state = params.get('state');
     const mode = params.get('mode') || MODES.VS_COMPUTER;
     const joinId = params.get('join');
+    const replay = params.get('replay');
+
+    if (replay) {
+        try {
+            const decoded = LZString.decompressFromEncodedURIComponent(replay);
+            moveHistory = JSON.parse(decoded);
+            if (moveHistory && moveHistory.length > 0) {
+                replayStep = 0;
+                pileA = moveHistory[0][0];
+                pileB = moveHistory[0][1];
+                startGame(MODES.REPLAY, true);
+                return;
+            }
+        } catch (e) {
+            console.error("Failed to parse replay", e);
+            showToast("Invalid replay link");
+        }
+    }
 
     if (state) {
         const parts = state.split('-');
         pileA = parseInt(parts[0]) || 20;
         pileB = parseInt(parts[1]) || 25;
-        
+
         if (joinId) {
             // Auto-join if ID is in link
             startGame(MODES.MULTIPLAYER, true);
@@ -185,16 +212,30 @@ function startGame(mode, skipRandomize = false) {
     menuOverlay.classList.add('hidden');
     gameContainer.classList.remove('hidden');
 
+    const replayControls = document.getElementById('replay-controls');
+
     if (mode === MODES.MULTIPLAYER) {
         setupPeer();
         isHost = !skipRandomize;
         mpSection.classList.remove('hidden');
         aiBtn.classList.add('hidden');
+        replayControls.classList.add('hidden');
         modeIndicator.textContent = "Multiplayer Mode";
+    } else if (mode === MODES.REPLAY) {
+        mpSection.classList.add('hidden');
+        aiBtn.classList.add('hidden');
+        replayControls.classList.remove('hidden');
+        modeIndicator.textContent = "Replay Mode";
+        updateReplayUI();
     } else {
         mpSection.classList.add('hidden');
         aiBtn.classList.remove('hidden');
+        replayControls.classList.add('hidden');
         modeIndicator.textContent = "Vs Computer";
+    }
+
+    if (mode !== MODES.REPLAY && !skipRandomize) {
+        moveHistory = [[pileA, pileB]];
     }
 
     updateUI();
@@ -203,6 +244,7 @@ function startGame(mode, skipRandomize = false) {
 function exitToMenu() {
     gameMode = MODES.MENU;
     window.location.hash = '';
+    moveHistory = [];
     menuOverlay.classList.remove('hidden');
     gameContainer.classList.add('hidden');
     reconnectOverlay.classList.add('hidden');
@@ -219,16 +261,17 @@ function randomizePiles() {
     pileB = Math.floor(Math.random() * 18) + 12;
     if (Math.abs(pileA - pileB) < 2) pileB += 5;
     myTurn = true;
+    moveHistory = [[pileA, pileB]];
 }
 
 function handleMove() {
     if (!myTurn || pendingMove) return;
-    
+
     const amount = parseInt(amountInput.value);
     const type = moveTypeSelect.value;
     let nextA = pileA;
     let nextB = pileB;
-    
+
     if (type === 'one') {
         const target = targetPileSelect.value;
         if (target === 'a') nextA -= amount;
@@ -240,11 +283,12 @@ function handleMove() {
         showFloatingText(amount, 'pile-a-container');
         showFloatingText(amount, 'pile-b-container');
     }
-    
+
     if (validate_move(pileA, pileB, nextA, nextB)) {
         pileA = nextA;
         pileB = nextB;
-        
+        moveHistory.push([pileA, pileB]);
+
         if (gameMode === MODES.MULTIPLAYER) {
             pendingMove = { pileA, pileB };
             myTurn = false;
@@ -272,6 +316,7 @@ function handleAiMove() {
     if (diffB > 0) showFloatingText(diffB, 'pile-b-container');
     pileA = result[0];
     pileB = result[1];
+    moveHistory.push([pileA, pileB]);
     myTurn = true;
     updateUI();
     updateUrl();
@@ -285,20 +330,34 @@ function updateUI() {
     updateMaxAmount();
     const appContainer = document.getElementById('app');
     const controls = document.querySelectorAll('#controls input, #controls select, #confirm-move');
+    const shareReplayBtn = document.getElementById('share-replay-btn');
+
+    if (gameMode === MODES.REPLAY) {
+        appContainer.classList.remove('my-turn');
+        controls.forEach(c => c.disabled = true);
+        gameStatus.textContent = "Watching Replay";
+        shareReplayBtn.classList.remove('hidden');
+        return;
+    }
+
     if (myTurn && !pendingMove) {
         appContainer.classList.add('my-turn');
         controls.forEach(c => c.disabled = false);
         gameStatus.textContent = "Your Turn";
+        shareReplayBtn.classList.add('hidden');
     } else {
         appContainer.classList.remove('my-turn');
         controls.forEach(c => c.disabled = true);
         gameStatus.textContent = pendingMove ? "Syncing..." : "Opponent's Turn...";
+        shareReplayBtn.classList.add('hidden');
     }
+
     if (pileA === 0 && pileB === 0) {
         gameStatus.textContent = myTurn ? "Game Over! You lost." : "Victory! You won!";
         confirmBtn.disabled = true;
+        shareReplayBtn.classList.remove('hidden');
         document.body.classList.add('shake');
-        setTimeout(() => document.body.classList.remove('shake'), 500);
+        setTimeout(() => document.body.classList.remove('shake'), 600);
     }
 }
 
@@ -307,7 +366,12 @@ function renderTokens(container, count) {
     if (currentCount > count) {
         for (let i = 0; i < currentCount - count; i++) {
             const last = container.lastElementChild;
-            if (last) { last.classList.add('token-removing'); setTimeout(() => last.remove(), 300); }
+            if (last) {
+                last.classList.add('token-removing');
+                // Add a small random rotation on remove for better physics wrapper feel
+                last.style.transform = `scale(1.4) rotate(${Math.random() * 40 - 20}deg)`;
+                setTimeout(() => last.remove(), 400);
+            }
         }
     } else if (currentCount < count) {
         for (let i = 0; i < count - currentCount; i++) {
@@ -324,7 +388,7 @@ function showFloatingText(amount, containerId) {
     const text = document.createElement('div');
     text.className = 'floating-text';
     text.textContent = `-${amount}`;
-    text.style.left = `${rect.left + rect.width/2}px`;
+    text.style.left = `${rect.left + rect.width / 2}px`;
     text.style.top = `${rect.top}px`;
     document.body.appendChild(text);
     setTimeout(() => text.remove(), 800);
@@ -353,13 +417,19 @@ function setupConnection() {
     conn.on('data', (data) => {
         if (data.type === 'move') {
             if (validate_move(pileA, pileB, data.pileA, data.pileB)) {
-                pileA = data.pileA; pileB = data.pileB; myTurn = true; updateUI(); updateUrl(); sendState('ack'); showToast('Opponent moved!');
+                pileA = data.pileA; pileB = data.pileB;
+                moveHistory.push([pileA, pileB]);
+                myTurn = true; updateUI(); updateUrl(); sendState('ack'); showToast('Opponent moved!');
             } else { sendState('request_sync'); }
         } else if (data.type === 'ack') { pendingMove = null; updateUI(); updateUrl(); }
-        else if (data.type === 'sync' || data.type === 'resync_resp') { pileA = data.pileA; pileB = data.pileB; myTurn = data.type === 'resync_resp' ? myTurn : !isHost; updateUI(); updateUrl(); }
+        else if (data.type === 'sync' || data.type === 'resync_resp') {
+            pileA = data.pileA; pileB = data.pileB;
+            moveHistory = [[pileA, pileB]];
+            myTurn = data.type === 'resync_resp' ? myTurn : !isHost; updateUI(); updateUrl();
+        }
         else if (data.type === 'request_sync') { sendState('resync_resp'); }
         else if (data.type === 'presence') { handlePresenceCue(data); }
-        else if (data.type === 'heartbeat') {}
+        else if (data.type === 'heartbeat') { }
     });
     conn.on('close', () => handleDisconnect());
     conn.on('error', () => handleDisconnect());
@@ -386,6 +456,57 @@ function sendState(type, a = pileA, b = pileB) { if (conn && conn.open) { conn.s
 
 function resetGame() { randomizePiles(); updateUI(); updateUrl(); if (gameMode === MODES.MULTIPLAYER) sendState('sync', pileA, pileB); showToast('Game Reset'); }
 
-function updateUrl() { if (gameMode === MODES.MENU) return; const state = `state=${pileA}-${pileB}&mode=${gameMode}`; window.history.replaceState(null, '', `#${state}`); }
+function updateUrl() { if (gameMode === MODES.MENU || gameMode === MODES.REPLAY) return; const state = `state=${pileA}-${pileB}&mode=${gameMode}`; window.history.replaceState(null, '', `#${state}`); }
+
+function prevReplayStep() {
+    if (replayStep > 0) {
+        replayStep--;
+        pileA = moveHistory[replayStep][0];
+        pileB = moveHistory[replayStep][1];
+        updateReplayUI();
+    }
+}
+
+function nextReplayStep() {
+    if (replayStep < moveHistory.length - 1) {
+        replayStep++;
+        const prevA = pileA;
+        const prevB = pileB;
+        pileA = moveHistory[replayStep][0];
+        pileB = moveHistory[replayStep][1];
+
+        const diffA = prevA - pileA;
+        const diffB = prevB - pileB;
+        if (diffA > 0) showFloatingText(diffA, 'pile-a-container');
+        if (diffB > 0) showFloatingText(diffB, 'pile-b-container');
+
+        updateReplayUI();
+    }
+}
+
+function updateReplayUI() {
+    if (moveHistory && moveHistory.length > 0) {
+        document.getElementById('replay-step-indicator').textContent = `Step ${replayStep} / ${moveHistory.length - 1}`;
+        document.getElementById('prev-move-btn').disabled = replayStep === 0;
+        document.getElementById('next-move-btn').disabled = replayStep === moveHistory.length - 1;
+    }
+    updateUI();
+}
+
+function shareReplay() {
+    if (moveHistory.length === 0) return;
+    const encoded = LZString.compressToEncodedURIComponent(JSON.stringify(moveHistory));
+    const url = `${window.location.origin}${window.location.pathname}#replay=${encoded}`;
+
+    if (navigator.share) {
+        navigator.share({
+            title: "Wythoff's Game Replay",
+            text: "Check out my amazing Wythoff's Game replay!",
+            url: url
+        }).catch(err => copyToClipboard(url));
+    } else {
+        copyToClipboard(url);
+    }
+}
 
 run();

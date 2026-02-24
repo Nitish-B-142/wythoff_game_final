@@ -15,6 +15,7 @@
     "vite": "npm:rolldown-vite@7.2.5"
   },
   "dependencies": {
+    "lz-string": "^1.5.0",
     "peerjs": "^1.5.5"
   }
 }

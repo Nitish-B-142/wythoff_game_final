@@ -1,13 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wythoff's Game</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css">
 </head>
+
 <body>
-    <div id="app">
+    <div id="app" class="glass-panel">
         <header>
             <h1>Wythoff's Game</h1>
             <div id="status-toast" class="toast hidden" aria-live="assertive"></div>
@@ -29,7 +35,7 @@
                     <button id="vs-computer-btn" class="primary-btn">Vs Computer</button>
                     <button id="multiplayer-menu-btn" class="secondary-btn">Multiplayer</button>
                 </div>
-                
+
                 <section class="instructions">
                     <h3>How to Play</h3>
                     <ul>
@@ -37,7 +43,8 @@
                         <li>On your turn, you can:
                             <ul>
                                 <li>Take <strong>any number</strong> of tokens from <strong>one pile</strong>.</li>
-                                <li>Take the <strong>same number</strong> of tokens from <strong>both piles</strong>.</li>
+                                <li>Take the <strong>same number</strong> of tokens from <strong>both piles</strong>.
+                                </li>
                             </ul>
                         </li>
                         <li>The player who takes the <strong>last token</strong> wins!</li>
@@ -58,6 +65,14 @@
 
             <!-- Ghost Hand Tutorial Element -->
             <div id="ghost-hand" class="ghost-hand hidden">👆</div>
+
+            <div id="replay-controls" class="hidden"
+                style="text-align: center; margin-bottom: 1rem; display: flex; justify-content: center; gap: 1rem; align-items: center;">
+                <button id="prev-move-btn" class="secondary-btn">◀ Prev</button>
+                <span id="replay-step-indicator">Step 0 / 0</span>
+                <button id="next-move-btn" class="secondary-btn">Next ▶</button>
+                <button id="exit-replay-btn" class="text-btn">Exit Replay</button>
+            </div>
 
             <div id="game-board">
                 <div class="pile" id="pile-a-container" aria-labelledby="pile-a-label">
@@ -99,6 +114,8 @@
                     <button id="confirm-move" class="primary-btn">Confirm Move</button>
                     <button id="ai-move-btn" class="hidden">AI Hint</button>
                     <button id="reset-game">Reset Game</button>
+                    <button id="share-replay-btn" class="hidden primary-btn" style="background-color: #6366f1;">Share
+                        Replay</button>
                 </div>
             </section>
 
@@ -123,4 +140,5 @@
     </div>
     <script type="module" src="/src/main.js"></script>
 </body>
+
 </html>
