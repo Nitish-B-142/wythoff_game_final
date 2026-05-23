@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wythoff's Game</title>
+    <title>Wythoff's Game | Cosmic Edition</title>
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,129 +13,179 @@
 </head>
 
 <body>
-    <div id="app" class="glass-panel">
-        <header>
-            <h1>Wythoff's Game</h1>
+    <!-- Cosmic background particles & glow effects (rendered via CSS gradients & animations) -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <div id="app" class="app-shell">
+        <header class="app-header">
+            <h1 class="glow-title">WYTHOFF</h1>
             <div id="status-toast" class="toast hidden" aria-live="assertive"></div>
+            
             <div id="reconnect-overlay" class="overlay hidden">
-                <div class="menu-content">
+                <div class="glass-panel overlay-card">
+                    <div class="alert-icon">⚠️</div>
                     <h2>Connection Lost</h2>
-                    <p>Attempting to reconnect to opponent...</p>
+                    <p>Attempting to re-establish link to opponent...</p>
                     <div class="spinner"></div>
-                    <button id="force-quit-btn" class="secondary-btn">Return to Menu</button>
+                    <button id="force-quit-btn" class="btn btn-secondary">Return to Menu</button>
                 </div>
             </div>
         </header>
 
         <!-- Start Menu Overlay -->
         <div id="menu-overlay" class="overlay">
-            <div class="menu-content">
-                <h2>Select Game Mode</h2>
+            <div class="glass-panel menu-card">
+                <div class="menu-header">
+                    <h1 class="logo-text">WYTHOFF</h1>
+                    <p class="tagline">The Mathematical Game of Strategy</p>
+                </div>
+                
                 <div class="menu-buttons">
-                    <button id="vs-computer-btn" class="primary-btn">Vs Computer</button>
-                    <button id="multiplayer-menu-btn" class="secondary-btn">Multiplayer</button>
+                    <button id="vs-computer-btn" class="btn btn-primary">
+                        <span class="btn-icon">🤖</span>
+                        <span class="btn-text-group">
+                            <span class="btn-title">Vs Computer</span>
+                            <span class="btn-subtitle">Play against the optimal AI</span>
+                        </span>
+                    </button>
+                    <button id="multiplayer-menu-btn" class="btn btn-secondary">
+                        <span class="btn-icon">⚡</span>
+                        <span class="btn-text-group">
+                            <span class="btn-title">Multiplayer Mode</span>
+                            <span class="btn-subtitle">Challenge friends via P2P</span>
+                        </span>
+                    </button>
                 </div>
 
-                <section class="instructions">
+                <section class="instructions-card">
                     <h3>How to Play</h3>
-                    <ul>
-                        <li>The game starts with two piles of tokens.</li>
-                        <li>On your turn, you can:
-                            <ul>
-                                <li>Take <strong>any number</strong> of tokens from <strong>one pile</strong>.</li>
-                                <li>Take the <strong>same number</strong> of tokens from <strong>both piles</strong>.
-                                </li>
-                            </ul>
-                        </li>
-                        <li>The player who takes the <strong>last token</strong> wins!</li>
-                    </ul>
+                    <div class="rules-container">
+                        <div class="rule-item">
+                            <span class="rule-num">1</span>
+                            <p>Take <strong>any number</strong> of tokens from <strong>one pile</strong>.</p>
+                        </div>
+                        <div class="rule-item">
+                            <span class="rule-num">2</span>
+                            <p>Take the <strong>same number</strong> of tokens from <strong>both piles</strong> simultaneously.</p>
+                        </div>
+                        <div class="rule-item win-rule">
+                            <span class="rule-num">★</span>
+                            <p>The player who takes the <strong>last remaining token</strong> wins the game!</p>
+                        </div>
+                    </div>
                 </section>
             </div>
         </div>
 
         <main id="game-container" class="hidden">
-            <div id="game-header">
-                <button id="back-to-menu-btn" class="text-btn">← Main Menu</button>
-                <div id="game-status-bar">
-                    <p id="game-status">Your turn</p>
-                    <div id="interaction-status" class="hidden">Opponent is choosing...</div>
-                    <small id="mode-indicator"></small>
+            <div id="game-header" class="game-header-bar">
+                <button id="back-to-menu-btn" class="btn btn-back">
+                    <span class="back-arrow">←</span> Main Menu
+                </button>
+                <div id="game-status-bar" class="status-display">
+                    <span id="mode-indicator" class="mode-badge"></span>
+                    <h2 id="game-status" class="status-text">Your turn</h2>
+                    <div id="interaction-status" class="presence-indicator hidden">Opponent is choosing...</div>
                 </div>
             </div>
 
             <!-- Ghost Hand Tutorial Element -->
             <div id="ghost-hand" class="ghost-hand hidden">👆</div>
 
-            <div id="replay-controls" class="hidden"
-                style="text-align: center; margin-bottom: 1rem; display: flex; justify-content: center; gap: 1rem; align-items: center;">
-                <button id="prev-move-btn" class="secondary-btn">◀ Prev</button>
-                <span id="replay-step-indicator">Step 0 / 0</span>
-                <button id="next-move-btn" class="secondary-btn">Next ▶</button>
-                <button id="exit-replay-btn" class="text-btn">Exit Replay</button>
+            <div id="replay-controls" class="replay-controls-card hidden">
+                <button id="prev-move-btn" class="btn btn-nav">◀ Prev</button>
+                <span id="replay-step-indicator" class="replay-step">Step 0 / 0</span>
+                <button id="next-move-btn" class="btn btn-nav">Next ▶</button>
+                <button id="exit-replay-btn" class="btn btn-text">Exit Replay</button>
             </div>
 
-            <div id="game-board">
-                <div class="pile" id="pile-a-container" aria-labelledby="pile-a-label">
-                    <h2 id="pile-a-label">Pile A</h2>
-                    <div id="pile-a-tokens" class="tokens" aria-label="Tokens in Pile A"></div>
-                    <p class="count" id="pile-a-count">0 tokens</p>
+            <div id="game-board" class="board-grid">
+                <div class="pile-card" id="pile-a-container" aria-labelledby="pile-a-label">
+                    <div class="pile-header a-theme">
+                        <span class="pile-badge">Pile A</span>
+                        <span class="count" id="pile-a-count">0 tokens</span>
+                    </div>
+                    <div id="pile-a-tokens" class="tokens-area a-theme-tokens" aria-label="Tokens in Pile A"></div>
                 </div>
-                <div class="pile" id="pile-b-container" aria-labelledby="pile-b-label">
-                    <h2 id="pile-b-label">Pile B</h2>
-                    <div id="pile-b-tokens" class="tokens" aria-label="Tokens in Pile B"></div>
-                    <p class="count" id="pile-b-count">0 tokens</p>
+                <div class="pile-card" id="pile-b-container" aria-labelledby="pile-b-label">
+                    <div class="pile-header b-theme">
+                        <span class="pile-badge">Pile B</span>
+                        <span class="count" id="pile-b-count">0 tokens</span>
+                    </div>
+                    <div id="pile-b-tokens" class="tokens-area b-theme-tokens" aria-label="Tokens in Pile B"></div>
                 </div>
             </div>
 
-            <section id="controls" aria-label="Game Controls">
-                <div class="control-group">
-                    <label for="move-type">Move Type:</label>
-                    <select id="move-type">
-                        <option value="one">One Pile</option>
-                        <option value="both">Both Piles</option>
-                    </select>
+            <section id="controls" class="glass-panel control-deck" aria-label="Game Controls">
+                <div class="control-row">
+                    <div class="control-field select-field">
+                        <label for="move-type">Move Type</label>
+                        <div class="select-wrapper">
+                            <select id="move-type">
+                                <option value="one">One Pile Only</option>
+                                <option value="both">Both Piles (Equal)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="control-field select-field" id="target-pile-group">
+                        <label for="target-pile">Target Pile</label>
+                        <div class="select-wrapper">
+                            <select id="target-pile">
+                                <option value="a">Pile A</option>
+                                <option value="b">Pile B</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="control-group" id="target-pile-group">
-                    <label for="target-pile">Target Pile:</label>
-                    <select id="target-pile">
-                        <option value="a">Pile A</option>
-                        <option value="b">Pile B</option>
-                    </select>
+                <div class="control-field slider-field">
+                    <div class="slider-header">
+                        <label for="token-amount">Amount to Remove</label>
+                        <span id="amount-display" class="amount-badge">1</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="token-amount" min="1" value="1">
+                    </div>
                 </div>
 
-                <div class="control-group">
-                    <label for="token-amount">Amount to Remove:</label>
-                    <input type="range" id="token-amount" min="1" value="1">
-                    <span id="amount-display">1</span>
-                </div>
-
-                <div class="button-group">
-                    <button id="confirm-move" class="primary-btn">Confirm Move</button>
-                    <button id="ai-move-btn" class="hidden">AI Hint</button>
-                    <button id="reset-game">Reset Game</button>
-                    <button id="share-replay-btn" class="hidden primary-btn" style="background-color: #6366f1;">Share
-                        Replay</button>
+                <div class="action-buttons">
+                    <button id="confirm-move" class="btn btn-confirm">Confirm Move</button>
+                    <button id="ai-move-btn" class="btn btn-ai hidden">🤖 AI Hint</button>
+                    <button id="reset-game" class="btn btn-reset">Reset</button>
+                    <button id="share-replay-btn" class="btn btn-share-replay hidden">
+                        <span>📤 Share Replay</span>
+                    </button>
                 </div>
             </section>
 
-            <section id="multiplayer" class="mp-section">
-                <h3>Multiplayer Setup</h3>
-                <div class="mp-group">
-                    <p>Your ID: <span id="my-id">...</span></p>
-                    <div class="input-row">
-                        <input type="text" id="remote-id" placeholder="Enter Friend's ID">
-                        <button id="connect-btn">Connect</button>
+            <section id="multiplayer" class="glass-panel mp-deck hidden">
+                <h3>Multiplayer Link Setup</h3>
+                <div class="mp-grid">
+                    <div class="mp-my-id-card">
+                        <span class="mp-label">Your Connection ID</span>
+                        <code id="my-id" class="id-badge">...</code>
+                    </div>
+                    
+                    <div class="mp-connection-card">
+                        <span class="mp-label">Connect to Opponent</span>
+                        <div class="input-action-group">
+                            <input type="text" id="remote-id" placeholder="Enter peer ID...">
+                            <button id="connect-btn" class="btn btn-connect">Connect</button>
+                        </div>
                     </div>
                 </div>
-                <div class="mp-group">
-                    <button id="share-link-btn" class="secondary-btn">Copy Challenge Link</button>
+                <div class="mp-actions">
+                    <button id="share-link-btn" class="btn btn-invite">
+                        <span>🔗 Copy Invite Link</span>
+                    </button>
                 </div>
             </section>
         </main>
 
-        <footer>
-            <p>Take tokens from one pile, or same amount from both. Last player to move wins.</p>
+        <footer class="app-footer">
+            <p>Take any number of tokens from one pile, or equal amounts from both. Take the last token to win.</p>
         </footer>
     </div>
     <script type="module" src="/src/main.js"></script>
