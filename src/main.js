@@ -335,8 +335,12 @@ function updateUI() {
     if (gameMode === MODES.REPLAY) {
         appContainer.classList.remove('my-turn');
         controls.forEach(c => c.disabled = true);
-        gameStatus.textContent = "Watching Replay";
         shareReplayBtn.classList.remove('hidden');
+        if (pileA === 0 && pileB === 0) {
+            gameStatus.textContent = "Replay Finished!";
+        } else {
+            gameStatus.textContent = (replayStep % 2 === 0) ? "Player 1's Turn" : "Player 2's Turn";
+        }
         return;
     }
 
@@ -425,7 +429,7 @@ function setupConnection() {
         else if (data.type === 'sync' || data.type === 'resync_resp') {
             pileA = data.pileA; pileB = data.pileB;
             moveHistory = [[pileA, pileB]];
-            myTurn = data.type === 'resync_resp' ? myTurn : !isHost; updateUI(); updateUrl();
+            myTurn = data.type === 'resync_resp' ? myTurn : isHost; updateUI(); updateUrl();
         }
         else if (data.type === 'request_sync') { sendState('resync_resp'); }
         else if (data.type === 'presence') { handlePresenceCue(data); }

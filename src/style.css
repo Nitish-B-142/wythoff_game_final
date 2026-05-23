@@ -1,10 +1,20 @@
 :root {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
+}
+
+.glass-panel {
+  background: rgba(42, 42, 42, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  border-radius: 24px;
+  padding: 2.5rem !important;
 }
 
 body {
@@ -231,6 +241,11 @@ header h1 {
   75% { transform: translateX(5px); }
 }
 
+@keyframes token-grow {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 .token-removing {
   animation: token-pop 0.3s forwards;
 }
@@ -298,8 +313,10 @@ header h1 {
 .token {
   width: 20px;
   height: 20px;
-  background-color: #646cff;
+  background: radial-gradient(circle at 35% 35%, #8c92ff, #646cff 70%, #4046b3);
   border-radius: 50%;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  animation: token-grow 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 .count {
