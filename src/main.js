@@ -513,4 +513,13 @@ function shareReplay() {
     }
 }
 
+function showToast(message) {
+    const toast = document.getElementById('status-toast');
+    if (toast) {
+        toast.textContent = message;
+        toast.classList.remove('hidden');
+        setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+}
+
 run();
