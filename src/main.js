@@ -1,4 +1,7 @@
 import init, { validate_move, ai_move } from '../pkg/wythoff_wasm.js';
+
+let validateMoveFn = validate_move;
+let aiMoveFn = ai_move;
 import { Peer } from 'peerjs';
 import LZString from 'lz-string';
 
@@ -55,7 +58,41 @@ const mpSection = document.getElementById('multiplayer');
 
 // Initialization
 async function run() {
-    await init();
+    try {
+        await init();
+        validateMoveFn = validate_move;
+        aiMoveFn = ai_move;
+    } catch (e) {
+        console.error("WebAssembly failed to initialize. Using pure JS fallback.", e);
+        validateMoveFn = (pa, pb, na, nb) => {
+            if (na < 0 || nb < 0) return false;
+            if (na === pa && nb === pb) return false;
+            if (na === pa) return nb < pb;
+            if (nb === pb) return na < pa;
+            return (pa - na) === (pb - nb) && na < pa;
+        };
+        aiMoveFn = (pa, pb) => {
+            const phi = (1 + Math.sqrt(5)) / 2;
+            const isCold = (x, y) => {
+                const min = Math.min(x, y);
+                const max = Math.max(x, y);
+                const n = Math.round(min / phi);
+                return Math.floor(n * phi) === min && Math.floor(n * phi * phi) === max;
+            };
+            for (let na = pa - 1; na >= 0; na--) {
+                if (isCold(na, pb)) return [na, pb];
+            }
+            for (let nb = pb - 1; nb >= 0; nb--) {
+                if (isCold(pa, nb)) return [pa, nb];
+            }
+            for (let diff = 1; diff <= Math.min(pa, pb); diff++) {
+                if (isCold(pa - diff, pb - diff)) return [pa - diff, pb - diff];
+            }
+            if (pa > 0) return [pa - 1, pb];
+            if (pb > 0) return [pa, pb - 1];
+            return [0, 0];
+        };
+    }
     setupEventListeners();
     handleInitialState();
     updateUI();
@@ -284,7 +321,7 @@ function handleMove() {
         showFloatingText(amount, 'pile-b-container');
     }
 
-    if (validate_move(pileA, pileB, nextA, nextB)) {
+    if (validateMoveFn(pileA, pileB, nextA, nextB)) {
         pileA = nextA;
         pileB = nextB;
         moveHistory.push([pileA, pileB]);
@@ -309,7 +346,7 @@ function handleMove() {
 
 function handleAiMove() {
     if (gameMode !== MODES.VS_COMPUTER) return;
-    const result = ai_move(pileA, pileB);
+    const result = aiMoveFn(pileA, pileB);
     const diffA = pileA - result[0];
     const diffB = pileB - result[1];
     if (diffA > 0) showFloatingText(diffA, 'pile-a-container');
@@ -420,7 +457,7 @@ function setupConnection() {
     conn.on('open', () => { showToast('Connected!'); reconnectOverlay.classList.add('hidden'); startHeartbeat(); });
     conn.on('data', (data) => {
         if (data.type === 'move') {
-            if (validate_move(pileA, pileB, data.pileA, data.pileB)) {
+            if (validateMoveFn(pileA, pileB, data.pileA, data.pileB)) {
                 pileA = data.pileA; pileB = data.pileB;
                 moveHistory.push([pileA, pileB]);
                 myTurn = true; updateUI(); updateUrl(); sendState('ack'); showToast('Opponent moved!');

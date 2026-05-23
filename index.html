@@ -10,6 +10,54 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css">
+    
+    <!-- Error handling script to catch and display any runtime crashes -->
+    <script>
+        window.addEventListener('error', function(e) {
+            const errDiv = document.createElement('div');
+            errDiv.className = 'glass-panel';
+            errDiv.style.position = 'fixed';
+            errDiv.style.top = '20px';
+            errDiv.style.left = '50%';
+            errDiv.style.transform = 'translateX(-50%)';
+            errDiv.style.width = '90%';
+            errDiv.style.maxWidth = '600px';
+            errDiv.style.backgroundColor = 'rgba(239, 68, 68, 0.95)';
+            errDiv.style.border = '1px solid #ef4444';
+            errDiv.style.color = '#fff';
+            errDiv.style.padding = '1.5rem';
+            errDiv.style.borderRadius = '16px';
+            errDiv.style.zIndex = '99999';
+            errDiv.style.fontFamily = 'monospace';
+            errDiv.style.fontSize = '0.85rem';
+            errDiv.style.whiteSpace = 'pre-wrap';
+            errDiv.style.boxShadow = '0 10px 30px rgba(239, 68, 68, 0.4)';
+            errDiv.textContent = '🔴 RUNTIME ERROR:\n' + e.message + '\n\nat ' + e.filename + ':' + e.lineno + ':' + e.colno + '\n\nStack:\n' + (e.error ? e.error.stack : 'No stack trace');
+            document.body.appendChild(errDiv);
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            const errDiv = document.createElement('div');
+            errDiv.className = 'glass-panel';
+            errDiv.style.position = 'fixed';
+            errDiv.style.top = '20px';
+            errDiv.style.left = '50%';
+            errDiv.style.transform = 'translateX(-50%)';
+            errDiv.style.width = '90%';
+            errDiv.style.maxWidth = '600px';
+            errDiv.style.backgroundColor = 'rgba(245, 158, 11, 0.95)';
+            errDiv.style.border = '1px solid #f59e0b';
+            errDiv.style.color = '#fff';
+            errDiv.style.padding = '1.5rem';
+            errDiv.style.borderRadius = '16px';
+            errDiv.style.zIndex = '99999';
+            errDiv.style.fontFamily = 'monospace';
+            errDiv.style.fontSize = '0.85rem';
+            errDiv.style.whiteSpace = 'pre-wrap';
+            errDiv.style.boxShadow = '0 10px 30px rgba(245, 158, 11, 0.4)';
+            errDiv.textContent = '🟠 UNHANDLED REJECTION:\n' + e.reason + '\n\nStack:\n' + (e.reason && e.reason.stack ? e.reason.stack : 'No stack trace');
+            document.body.appendChild(errDiv);
+        });
+    </script>
 </head>
 
 <body>
